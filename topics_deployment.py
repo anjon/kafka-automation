@@ -1,4 +1,5 @@
 import yaml
+import argparse
 from confluent_kafka.admin import AdminClient, NewTopic
 
 def sync_kafka_topics(descriptor_path, bootstrap_servers):
@@ -52,4 +53,9 @@ def sync_kafka_topics(descriptor_path, bootstrap_servers):
 if __name__ == "__main__":
     # In your Docker lab, use 'broker-1:19092' if running inside the network
     # or 'localhost:9092' if running from your host machine.
-    sync_kafka_topics('topology.yml', 'localhost:9092')
+    parser = argparse.ArgumentParser(description="Sync Kafka Topics")
+    parser.add_argument("--bootstrap", default="localhost:9092", help="Kafka bootstrap servers")
+    parser.add_argument("--file", default="topology.yml", help="Path to topology file")
+    args = parser.parse_args()
+
+    sync_kafka_topics(args.file, args.bootstrap)
