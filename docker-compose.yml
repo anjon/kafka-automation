@@ -22,8 +22,11 @@ x-kafka-env: &kafka-env
   KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
 
 services:
+# --- JENKINS (Custom Build) ---
   jenkins:
-    image: jenkinsci/blueocean:latest
+    build: 
+      context: .           # Look in the current directory
+      dockerfile: Dockerfile # Name of the file to use
     container_name: jenkins-lab
     privileged: true
     user: root
