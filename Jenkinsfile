@@ -30,7 +30,7 @@ pipeline {
             steps {
                 script {
                     // We pass the bootstrap server as an argument to your script
-                    sh "python sync_topics.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
+                    sh "python topics_deployment.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
                 }
             }
         }
