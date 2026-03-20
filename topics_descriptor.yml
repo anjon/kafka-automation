@@ -22,12 +22,6 @@ projects:
         config:
           cleanup.policy: "compact"
           retention.ms: "604800000" # 3 days
-      - name: "payment_audit"
-        partitions: 12
-        replication: 3
-        config:
-          cleanup.policy: "compact"
-          retention.ms: "259200000" # 3 days
 
   - name: "inventory"
     topics:
@@ -43,9 +37,3 @@ projects:
         config:
           cleanup.policy: "compact"
           retention.ms: "259200000" # 3 days
-      - name: "inventory_audit"
-        partitions: 12
-        replication: 3
-        config:
-          cleanup.policy: "compact"
-          retention.ms: "604800000" # 7 days
