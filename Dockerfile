@@ -1,4 +1,4 @@
-FROM jenkins/jenkins:lts-jdk17
+FROM jenkins/jenkins:lts
 USER root
 
 # 1. Install prerequisites (including curl and gnupg)
