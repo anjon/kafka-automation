@@ -1,0 +1,39 @@
+context: "dev-cluster"
+source: "jenkins-automation"
+
+projects:
+  - name: "payment"
+    topics:
+      - name: "payment_incoming"
+        partitions: 6
+        replication: 1 # Set to 1 for home labs; usually 3 in prod
+        config:
+          cleanup.policy: "delete"
+          retention.ms: "604800000" # 7 days
+      - name: "payments_outgoing"
+        partitions: 3
+        replication: 1
+        config:
+          cleanup.policy: "compact"
+          segment.ms: "604800000"
+      - name: "payment_errors"
+        partitions: 3
+        replication: 1
+        config:
+          cleanup.policy: "compact"
+          retention.ms: "604800000" # 3 days
+
+  - name: "inventory"
+    topics:
+      - name: "inventory_updates"
+        partitions: 3
+        replication: 1
+        config:
+          cleanup.policy: "delete"
+          retention.ms: "259200000" # 3 days
+      - name: "inventory_errors"
+        partitions: 3
+        replication: 1
+        config:
+          cleanup.policy: "compact"
+          retention.ms: "259200000" # 3 days
