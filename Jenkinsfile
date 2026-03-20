@@ -3,7 +3,7 @@ pipeline {
         docker {
             image 'python:3.14-slim'
             // Ensure this connects to your specific lab network
-            args '--network apache-kafka-cluster_kafka-net'
+            args '--network kafka-automation_kafka-net'
         }
     }
 
