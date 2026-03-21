@@ -1,7 +1,14 @@
 import yaml
 import argparse
-from confluent_kafka.admin import (AdminClient, AclBinding, AclBindingFilter, 
-                                   ResourceType, ACLOperation, ACLPermissionType, PatternType)
+from confluent_kafka.admin import (
+    AdminClient, 
+    AclBinding, 
+    AclBindingFilter, 
+    ResourceType, 
+    PatternType, 
+    OpType, 
+    PermissionType, 
+    ResourcePatternType)
 
 def sync_acls(descriptor_path, bootstrap_servers):
     with open(descriptor_path, 'r') as file:
@@ -19,8 +26,9 @@ def sync_acls(descriptor_path, bootstrap_servers):
         p_type = getattr(PatternType, entry['pattern_type'].upper(), PatternType.LITERAL)
         
         for rule in entry.get('rules', []):
-            op = getattr(ACLOperation, rule['operation'].upper(), ACLOperation.UNKNOWN)
-            perm = getattr(ACLPermissionType, rule['permission'].upper(), ACLPermissionType.ALLOW)
+            op = getattr(OpType, rule['operation'].upper(), OpType.UNKNOWN)
+            perm = getattr(PermissionType, rule['permission'].upper(), PermissionType.ALLOW)
+            p_type = getattr(ResourcePatternType, entry['pattern_type'].upper(), ResourcePatternType.LITERAL)
 
             binding = AclBinding(
                 restype=r_type,
@@ -55,8 +63,8 @@ def sync_acls(descriptor_path, bootstrap_servers):
     acl_filter = AclBindingFilter(
         restype=ResourceType.ANY,
         resource_pattern_type=PatternType.ANY,
-        operation=ACLOperation.ANY,
-        permission_type=ACLPermissionType.ANY
+        operation=OpType.ANY,
+        permission_type=PermissionType.ANY
     )
     
     # Fetch live ACLs
