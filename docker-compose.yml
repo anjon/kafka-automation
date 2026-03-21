@@ -20,6 +20,11 @@ x-kafka-env: &kafka-env
   KAFKA_NUM_PARTITIONS: 3
   CLUSTER_ID: "Mk3OEYBSQ9uFH_5Jt4vkgA"
   KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+  # ACL Settings (Remove it if there is no ACLs needed)
+  KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+  KAFKA_PRINCIPAL_BUILDER_CLASS: org.apache.kafka.common.security.authenticator.DefaultKafkaPrincipalBuilder
+  KAFKA_SUPER_USERS: User:admin;User:ANONYMOUS
+  KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
 
 services:
 # --- JENKINS (Custom Build) ---
