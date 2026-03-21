@@ -35,7 +35,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        sh "python topics_deployment.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
+                        sh "python topics_manager.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
                         topicsSuccess = true
                     } catch (Exception e) {
                         topicsSuccess = false
