@@ -20,15 +20,3 @@ acls:
       - principal: "User:inventory_admin"
         operation: "ALL"
         permission: "ALLOW"
-
-  - project: "analytics"
-    resource_type: "TOPIC"
-    resource_name: "analytics_reports"
-    pattern_type: "LITERAL"
-    rules:
-      - principal: "User:analytics_consumer"
-        operation: "READ"
-        permission: "ALLOW"
-      - principal: "User:analytics_producer"
-        operation: "WRITE"
-        permission: "ALLOW"
