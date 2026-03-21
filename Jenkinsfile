@@ -11,6 +11,12 @@ pipeline {
         // Using the internal broker name defined in your Docker Compose
         BOOTSTRAP_SERVERS = 'broker-1:19092,broker-2:19092,broker-3:19092'
         TOPOLOGY_FILE = 'topics_descriptor.yml'
+        ACLS_FILE = 'acls_descriptor.yml'
+    }
+    // Define flags to track stage success
+    script {
+        def topicsSuccess = false
+        def aclsSuccess   = false
     }
 
     stages {
@@ -26,22 +32,53 @@ pipeline {
             }
         }
 
-        stage('Sync Kafka Topics') {
+        stage('Managing Kafka Topics') {
             steps {
                 script {
-                    // We pass the bootstrap server as an argument to your script
-                    sh "python topics_deployment.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
+                    try {
+                        sh "python topics_deployment.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${TOPOLOGY_FILE}"
+                        topicsSuccess = true
+                    } catch (Exception e) {
+                        topicsSuccess = false
+                        error "Failed to sync Kafka topics: ${e.message}"
+                    }
+                }
+            }
+        }
+
+        stage('Managing Kafka ACLs') {
+            steps {
+                script {
+                    try {
+                        sh "python acls_manager.py --bootstrap ${BOOTSTRAP_SERVERS} --file ${ACLS_FILE}"
+                        aclsSuccess = true
+                    } catch (Exception e) {
+                        aclsSuccess = false
+                        error "Failed to sync Kafka ACLs: ${e.message}"
+                    }
                 }
             }
         }
     }
 
     post {
-        success {
-            echo "Kafka topics are synchronized with Git!"
+        always {
+            script {
+                // Build a dynamic report based on which flags were set to true
+                def statusMessage = "--- Kafka Automation Report ---\n"
+                statusMessage += "Topics Sync: ${topicsSuccess ? '✅ SUCCESS' : '❌ FAILED'}\n"
+                statusMessage += "ACLs Sync:   ${aclsSuccess ? '✅ SUCCESS' : '❌ FAILED'}\n"
+                
+                echo statusMessage
+            }
         }
+        
+        success {
+            echo "All infrastructure and security changes deployed successfully to ${env.BOOTSTRAP_SERVERS}"
+        }
+
         failure {
-            echo "Failed to sync topics. Check the logs for Kafka connectivity issues."
+            echo "Deployment failed. Please check the logs to see if it was a Topic or ACL issue."
         }
     }
 }

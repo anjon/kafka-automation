@@ -1,0 +1,22 @@
+version: "1.0"
+acls:
+  - project: "payment"
+    resource_type: "TOPIC"
+    resource_name: "payment_incoming"
+    pattern_type: "LITERAL"
+    rules:
+      - principal: "User:payment_producer"
+        operation: "WRITE"
+        permission: "ALLOW"
+      - principal: "User:payment_consumer"
+        operation: "READ"
+        permission: "ALLOW"
+
+  - project: "inventory"
+    resource_type: "TOPIC"
+    resource_name: "inventory_"
+    pattern_type: "PREFIXED" # Grant access to all topics starting with 'inventory_'
+    rules:
+      - principal: "User:inventory_admin"
+        operation: "ALL"
+        permission: "ALLOW"
