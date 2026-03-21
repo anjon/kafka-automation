@@ -1,34 +1,39 @@
 import yaml
 import argparse
 from confluent_kafka.admin import (
-    AdminClient, 
-    AclBinding, 
-    AclBindingFilter, 
-    ResourceType, 
-    PatternType, 
-    OpType, 
-    PermissionType, 
-    ResourcePatternType)
+    AdminClient,
+    AclBinding,
+    AclBindingFilter,
+    ResourceType,
+    AclOperation,
+    AclPermissionType,
+    ResourcePatternType
+)
+
+
+def enum_name(e):
+    """Safe enum name extraction"""
+    return getattr(e, "name", str(e))
+
 
 def sync_acls(descriptor_path, bootstrap_servers):
     with open(descriptor_path, 'r') as file:
         data = yaml.safe_load(file)
 
     admin_client = AdminClient({'bootstrap.servers': bootstrap_servers})
-    
+
     # 1. Parse Desired State from YAML
     desired_bindings = []
-    # We create a set of unique string representations to compare against live ACLs
     desired_fingerprints = set()
 
+    print(f"--- Loading ACL Descriptor: {descriptor_path} ---")
     for entry in data.get('acls', []):
         r_type = getattr(ResourceType, entry['resource_type'].upper(), ResourceType.UNKNOWN)
-        p_type = getattr(PatternType, entry['pattern_type'].upper(), PatternType.LITERAL)
-        
+        p_type = getattr(ResourcePatternType, entry['pattern_type'].upper(), ResourcePatternType.LITERAL)
+
         for rule in entry.get('rules', []):
-            op = getattr(OpType, rule['operation'].upper(), OpType.UNKNOWN)
-            perm = getattr(PermissionType, rule['permission'].upper(), PermissionType.ALLOW)
-            p_type = getattr(ResourcePatternType, entry['pattern_type'].upper(), ResourcePatternType.LITERAL)
+            op = getattr(AclOperation, rule['operation'].upper(), AclOperation.ANY)
+            perm = getattr(AclPermissionType, rule['permission'].upper(), AclPermissionType.ANY)
 
             binding = AclBinding(
                 restype=r_type,
@@ -40,7 +45,7 @@ def sync_acls(descriptor_path, bootstrap_servers):
                 permission_type=perm
             )
             desired_bindings.append(binding)
-            # Create a unique ID for this ACL: "Principal|Operation|Permission|Resource|Pattern"
+
             fingerprint = f"{rule['principal']}|{rule['operation'].upper()}|{rule['permission'].upper()}|{entry['resource_name']}|{entry['pattern_type'].upper()}"
             desired_fingerprints.add(fingerprint)
 
@@ -48,42 +53,51 @@ def sync_acls(descriptor_path, bootstrap_servers):
     if desired_bindings:
         print(f"--- Syncing {len(desired_bindings)} Desired ACLs ---")
         fs_create = admin_client.create_acls(desired_bindings)
+
         for binding, f in fs_create.items():
             try:
                 f.result()
-                print(f"VERIFIED/CREATED: {binding.principal} on {binding.name}")
+                print(f"VERIFIED/CREATED: {binding.principal} on {binding.name} ({enum_name(binding.operation)})")
             except Exception as e:
                 if "already exists" not in str(e).lower():
                     print(f"ERROR creating ACL: {e}")
 
-    # 3. Cleanup: Remove Stale ACLs (Reconciliation)
+    # 3. Cleanup: Remove Stale ACLs
     print("--- Running ACL Cleanup ---")
-    
-    # Create a filter to fetch ALL existing ACLs
+
+    # ✅ FIX: provide ALL required fields
     acl_filter = AclBindingFilter(
         restype=ResourceType.ANY,
-        resource_pattern_type=PatternType.ANY,
-        operation=OpType.ANY,
-        permission_type=PermissionType.ANY
+        name=None,
+        resource_pattern_type=ResourcePatternType.ANY,
+        principal=None,
+        host=None,
+        operation=AclOperation.ANY,
+        permission_type=AclPermissionType.ANY
     )
-    
-    # Fetch live ACLs
-    live_acls_future = admin_client.describe_acls(acl_filter)
+
     try:
+        live_acls_future = admin_client.describe_acls(acl_filter)
         live_acls = live_acls_future.result()
-        
+
         to_delete = []
+
         for acl in live_acls:
-            # Skip internal Kafka superuser/system ACLs if they exist
+            # SAFETY
             if acl.principal.startswith("User:admin") or acl.principal == "User:ANONYMOUS":
                 continue
-                
-            # Create fingerprint for the live ACL
-            live_fingerprint = f"{acl.principal}|{acl.operation.name}|{acl.permission_type.name}|{acl.name}|{acl.resource_pattern_type.name}"
-            
+
+            live_fingerprint = (
+                f"{acl.principal}|"
+                f"{enum_name(acl.operation)}|"
+                f"{enum_name(acl.permission_type)}|"
+                f"{acl.name}|"
+                f"{enum_name(acl.resource_pattern_type)}"
+            )
+
             if live_fingerprint not in desired_fingerprints:
-                print(f"PLAN: [DELETE] Stale ACL: {acl.principal} -> {acl.operation.name} on {acl.name}")
-                # Create a specific filter to delete exactly this binding
+                print(f"PLAN: [DELETE] {acl.principal} -> {enum_name(acl.operation)} on {acl.name}")
+
                 delete_filter = AclBindingFilter(
                     restype=acl.restype,
                     name=acl.name,
@@ -93,26 +107,29 @@ def sync_acls(descriptor_path, bootstrap_servers):
                     operation=acl.operation,
                     permission_type=acl.permission_type
                 )
+
                 to_delete.append(delete_filter)
 
         if to_delete:
             fs_delete = admin_client.delete_acls(to_delete)
+
             for delete_filter, f in fs_delete.items():
                 try:
-                    # delete_acls returns a list of deleted bindings for each filter
                     deleted_bindings = f.result()
                     print(f"SUCCESS: Removed {len(deleted_bindings)} stale ACL bindings.")
                 except Exception as e:
                     print(f"ERROR during cleanup: {e}")
         else:
-            print("INFO: No stale ACLs found. Cluster is clean.")
+            print("INFO: No stale ACLs found. Cluster security is in sync.")
 
     except Exception as e:
         print(f"CRITICAL: Could not fetch live ACLs: {e}")
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--bootstrap", default="localhost:9092")
-    parser.add_argument("--file", default="acls.yml")
+    parser = argparse.ArgumentParser(description="Kafka ACL Manager")
+    parser.add_argument("--bootstrap", required=True, help="Kafka bootstrap servers")
+    parser.add_argument("--file", required=True, help="Path to ACL descriptor YAML")
     args = parser.parse_args()
+
     sync_acls(args.file, args.bootstrap)
