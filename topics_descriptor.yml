@@ -37,3 +37,18 @@ projects:
         config:
           cleanup.policy: "compact"
           retention.ms: "259200000" # 3 days
+
+  - name: "transaction"
+    topics:
+      - name: "transaction_in_cash"
+        partitions: 6
+        replication: 1
+        config:
+          cleanup.policy: "delete"
+          retention.ms: "604800000" # 7 days
+      - name: "transaction_in_card"
+        partitions: 6
+        replication: 1
+        config:
+          cleanup.policy: "delete"
+          retention.ms: "604800000" # 7 days

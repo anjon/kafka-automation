@@ -81,20 +81,20 @@ services:
     volumes:
       - broker-3-data:/var/lib/kafka/data
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
+  kafbat-ui:
+    container_name: kafbat-ui
+    image: ghcr.io/kafbat/kafka-ui:latest
     ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: apache-kraft-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker-1:19092,broker-2:19092,broker-3:19092
+      - 8080:8080
     depends_on:
       - broker-1
       - broker-2
       - broker-3
     networks:
       - kafka-net
+    environment:
+      KAFKA_CLUSTERS_0_NAME: kafka-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker-1:19092,broker-2:19092,broker-3:19092
 
 volumes:
   jenkins_home:

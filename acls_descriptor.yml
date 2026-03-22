@@ -20,3 +20,15 @@ acls:
       - principal: "User:inventory_admin"
         operation: "ALL"
         permission: "ALLOW"
+
+  - project: "transaction"
+    resource_type: "TOPIC"
+    resource_name: "transaction_in_"
+    pattern_type: "PREFIXED"
+    rules:
+      - principal: "User:transaction_agent"
+        operation: "WRITE"
+        permission: "ALLOW"
+      - principal: "User:transaction_agent"
+        operation: "READ"
+        permission: "ALLOW"
