@@ -42,13 +42,13 @@ projects:
     topics:
       - name: "transaction_in_cash"
         partitions: 6
-        replication: 1
+        replication: 3
         config:
           cleanup.policy: "delete"
           retention.ms: "604800000" # 7 days
       - name: "transaction_in_card"
         partitions: 6
-        replication: 1
+        replication: 3
         config:
           cleanup.policy: "delete"
           retention.ms: "604800000" # 7 days
