@@ -27,7 +27,10 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 // Ensure the agent has the required libraries for the scripts
-                sh 'pip install confluent-kafka PyYAML'
+                sh '''
+                    python --version
+                    pip install --no-cache-dir confluent-kafka PyYAML
+                '''
             }
         }
 
