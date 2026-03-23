@@ -29,6 +29,7 @@ pipeline {
                 // Ensure the agent has the required libraries for the scripts
                 sh '''
                     python --version
+                    pip install --upgrade pip
                     pip install --no-cache-dir confluent-kafka PyYAML
                 '''
             }
