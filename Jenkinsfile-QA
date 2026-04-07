@@ -1,0 +1,58 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.14-slim'
+        }
+    }
+    
+    parameters {
+        string(name: 'REPO_URL', defaultValue: '', description: 'Public GitHub/GitLab URL')
+    }
+
+    stages {
+        stage('Environment Setup') {
+            steps {
+                sh '''
+                    apt-get update && apt-get install -y git
+                    pip install black pylint
+                '''
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: "*/main"]], 
+                    extensions: [
+                        [$class: 'RelativeTargetDirectory', relativeTargetDir: 'code_base'],
+                        [$class: 'QuietCheckout']
+                    ],
+                    userRemoteConfigs: [[
+                        url: "${params.REPO_URL}"
+                    ]]
+                )
+            }
+        }
+
+        stage('Quality Analysis') {
+            steps {
+                dir('code_base') {
+                    script {
+                        echo "--- Checking Formatting (Black) ---"
+                        // Shows what should change
+                        sh 'black --diff --check .'
+                        
+                        echo "--- Calculating Quality Score (Pylint) ---"
+                        // Finds all python files and runs pylint
+                        // Using '|| true' keeps the build green so we can see the score
+                        sh 'find . -name "*.py" | xargs pylint --output-format=text | tee pylint_report.txt || true'
+                        
+                        // Extracting the score to the console for visibility
+                        def score = sh(script: "grep 'Your code has been rated at' pylint_report.txt", returnStdout: true).trim()
+                        echo "FINAL SCORE: ${score}"
+                    }
+                }
+            }
+        }
+    }
+}
