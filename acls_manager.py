@@ -1,5 +1,6 @@
-import yaml
+"""This script synchronizes Kafka ACLs based on a YAML descriptor file."""
 import argparse
+import yaml
 from confluent_kafka.admin import (
     AdminClient,
     AclBinding,
@@ -7,7 +8,8 @@ from confluent_kafka.admin import (
     ResourceType,
     AclOperation,
     AclPermissionType,
-    ResourcePatternType
+    ResourcePatternType,
+    KafkaException,
 )
 
 
@@ -17,7 +19,8 @@ def enum_name(e):
 
 
 def sync_acls(descriptor_path, bootstrap_servers):
-    with open(descriptor_path, 'r') as file:
+    """ This script synchronizes Kafka ACLs based on a YAML descriptor file."""
+    with open(descriptor_path, 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
 
     admin_client = AdminClient({'bootstrap.servers': bootstrap_servers})
@@ -58,7 +61,7 @@ def sync_acls(descriptor_path, bootstrap_servers):
             try:
                 f.result()
                 print(f"VERIFIED/CREATED: {binding.principal} on {binding.name} ({enum_name(binding.operation)})")
-            except Exception as e:
+            except KafkaException as e:
                 if "already exists" not in str(e).lower():
                     print(f"ERROR creating ACL: {e}")
 
@@ -117,12 +120,12 @@ def sync_acls(descriptor_path, bootstrap_servers):
                 try:
                     deleted_bindings = f.result()
                     print(f"SUCCESS: Removed {len(deleted_bindings)} stale ACL bindings.")
-                except Exception as e:
+                except KafkaException as e:
                     print(f"ERROR during cleanup: {e}")
         else:
             print("INFO: No stale ACLs found. Cluster security is in sync.")
 
-    except Exception as e:
+    except KafkaException as e:
         print(f"CRITICAL: Could not fetch live ACLs: {e}")
 
 

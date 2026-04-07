@@ -1,10 +1,17 @@
-import yaml
+"""
+This script synchronizes Kafka topics based on a YAML descriptor file. 
+It performs the following steps:
+1. Loads the desired state of Kafka topics from a YAML file.
+2. Connects to the Kafka cluster and retrieves the current state of topics.
+3. Compares the desired state with the live state and identifies topics to create or delete.
+4. Executes the necessary create and delete operations using the Kafka Admin API."""
 import argparse
-from confluent_kafka.admin import AdminClient, NewTopic
+import yaml
+from confluent_kafka.admin import AdminClient, NewTopic, KafkaException
 
 def sync_kafka_topics(descriptor_path, bootstrap_servers):
-    # 1. Load the Desired State from YAML
-    with open(descriptor_path, 'r') as file:
+    """ 1. Load the Desired State from YAML"""
+    with open(descriptor_path, 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
 
     # Extract all topic names defined in the YAML
@@ -43,12 +50,12 @@ def sync_kafka_topics(descriptor_path, bootstrap_servers):
             try:
                 f.result()
                 print(f"SUCCESS: Created {topic}")
-            except Exception as e:
+            except KafkaException as e:
                 print(f"ERROR: Could not create {topic}: {e}")
 
     # --- PART B: DELETE REMOVED TOPICS ---
     to_delete = [t for t in live_topics if t not in desired_topics]
-    
+
     if to_delete:
         print(f"PLAN: [DELETE] the following topics: {to_delete}")
         fs_delete = admin_client.delete_topics(to_delete)
@@ -56,7 +63,7 @@ def sync_kafka_topics(descriptor_path, bootstrap_servers):
             try:
                 f.result()
                 print(f"SUCCESS: Deleted {topic}")
-            except Exception as e:
+            except KafkaException as e:
                 print(f"ERROR: Could not delete {topic}: {e}")
     else:
         print("INFO: No topics to delete.")
