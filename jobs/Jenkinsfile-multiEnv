@@ -12,6 +12,7 @@ pipeline {
 
     options {
         timeout(time: 30, unit: 'MINUTES')
+        skipDefaultCheckout()  // Optional: prevents automatic checkout at start
     }
 
     parameters {
@@ -26,24 +27,32 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                checkout scmGit(
-                    branches: [[name: "origin/main"]],
-                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'kafka-automation']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/anjon/kafka-automation.git'
-                    ]],
-                    changelog: false,
-                    poll: false
-                )
+                dir('kafka-automation') {
+                    checkout scmGit(
+                        branches: [[name: "origin/main"]],
+                        extensions: [
+                            [$class: 'CloneOption', 
+                             quiet: true,
+                             depth: 1,
+                             noTags: true,
+                             timeout: 10]
+                        ],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/anjon/kafka-automation.git'
+                        ]]
+                    )
+                }
             }
         }
 
-        stage('Checkig Repo') {
+        stage('Checking Repo') {
             steps {
-                sh '''
-                    python --version
-                    ls -l kafka-automation
-                '''
+                dir('kafka-automation') {
+                    sh '''
+                        python --version
+                        ls -l
+                    '''
+                }
             }
         }
 
