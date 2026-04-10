@@ -31,7 +31,9 @@ pipeline {
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'kafka-automation']],
                     userRemoteConfigs: [[
                         url: 'https://github.com/anjon/kafka-automation.git'
-                    ]]
+                    ]],
+                    changelog: false,
+                    poll: false
                 )
             }
         }
