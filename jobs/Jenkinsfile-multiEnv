@@ -1,0 +1,81 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.15-slim'
+        }
+    }
+
+    environment {
+        PYTHONUNBUFFERED = '1'
+        PIP_NO_CACHE_DIR = '1'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    parameters {
+        choice(
+            name: 'KAFKA_ENV',
+            choices: ['Test', 'Uat', 'Prod', 'ALL'],
+            description: 'Kafka Environment'
+        )
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: "origin/main"]],
+                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'kafka-automation']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/anjon/kafka-automation.git'
+                    ]]
+                )
+            }
+        }
+
+        stage('Checkig Repo') {
+            steps {
+                sh '''
+                    python --version
+                    ls -l kafka-automation
+                '''
+            }
+        }
+
+        stage('Test Environment') {
+            when {
+                expression { params.KAFKA_ENV in ['Test', 'ALL'] }
+            }
+            steps {
+                script {
+                    echo "Running for ${params.KAFKA_ENV} environment"
+                }
+            }
+        }
+
+        stage('UAT Environment') {
+            when {
+                expression { params.KAFKA_ENV in ['Uat', 'ALL'] }
+            }
+            steps {
+                script {
+                    echo "Running for ${params.KAFKA_ENV} environment"
+                }
+            }
+        }
+
+        stage('Prod Environment') {
+            when {
+                expression { params.KAFKA_ENV in ['Prod', 'ALL'] }
+            }
+            steps {
+                script {
+                    echo "Running for ${params.KAFKA_ENV} environment"
+                }
+            }
+        }
+    }
+}
