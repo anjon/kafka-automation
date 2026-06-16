@@ -1,4 +1,5 @@
 """This script synchronizes Kafka ACLs based on a YAML descriptor file."""
+
 import argparse
 import yaml
 from confluent_kafka.admin import (
@@ -19,33 +20,41 @@ def enum_name(e):
 
 
 def sync_acls(descriptor_path, bootstrap_servers):
-    """ This script synchronizes Kafka ACLs based on a YAML descriptor file."""
-    with open(descriptor_path, 'r', encoding='utf-8') as file:
+    """This script synchronizes Kafka ACLs based on a YAML descriptor file."""
+    with open(descriptor_path, "r", encoding="utf-8") as file:
         data = yaml.safe_load(file)
 
-    admin_client = AdminClient({'bootstrap.servers': bootstrap_servers})
+    admin_client = AdminClient({"bootstrap.servers": bootstrap_servers})
 
     # 1. Parse Desired State from YAML
     desired_bindings = []
     desired_fingerprints = set()
 
     print(f"--- Loading ACL Descriptor: {descriptor_path} ---")
-    for entry in data.get('acls', []):
-        r_type = getattr(ResourceType, entry['resource_type'].upper(), ResourceType.UNKNOWN)
-        p_type = getattr(ResourcePatternType, entry['pattern_type'].upper(), ResourcePatternType.LITERAL)
+    for entry in data.get("acls", []):
+        r_type = getattr(
+            ResourceType, entry["resource_type"].upper(), ResourceType.UNKNOWN
+        )
+        p_type = getattr(
+            ResourcePatternType,
+            entry["pattern_type"].upper(),
+            ResourcePatternType.LITERAL,
+        )
 
-        for rule in entry.get('rules', []):
-            op = getattr(AclOperation, rule['operation'].upper(), AclOperation.ANY)
-            perm = getattr(AclPermissionType, rule['permission'].upper(), AclPermissionType.ANY)
+        for rule in entry.get("rules", []):
+            op = getattr(AclOperation, rule["operation"].upper(), AclOperation.ANY)
+            perm = getattr(
+                AclPermissionType, rule["permission"].upper(), AclPermissionType.ANY
+            )
 
             binding = AclBinding(
                 restype=r_type,
-                name=entry['resource_name'],
+                name=entry["resource_name"],
                 resource_pattern_type=p_type,
-                principal=rule['principal'],
+                principal=rule["principal"],
                 host="*",
                 operation=op,
-                permission_type=perm
+                permission_type=perm,
             )
             desired_bindings.append(binding)
 
@@ -60,7 +69,9 @@ def sync_acls(descriptor_path, bootstrap_servers):
         for binding, f in fs_create.items():
             try:
                 f.result()
-                print(f"VERIFIED/CREATED: {binding.principal} on {binding.name} ({enum_name(binding.operation)})")
+                print(
+                    f"VERIFIED/CREATED: {binding.principal} on {binding.name} ({enum_name(binding.operation)})"
+                )
             except KafkaException as e:
                 if "already exists" not in str(e).lower():
                     print(f"ERROR creating ACL: {e}")
@@ -76,7 +87,7 @@ def sync_acls(descriptor_path, bootstrap_servers):
         principal=None,
         host=None,
         operation=AclOperation.ANY,
-        permission_type=AclPermissionType.ANY
+        permission_type=AclPermissionType.ANY,
     )
 
     try:
@@ -87,7 +98,10 @@ def sync_acls(descriptor_path, bootstrap_servers):
 
         for acl in live_acls:
             # SAFETY
-            if acl.principal.startswith("User:admin") or acl.principal == "User:ANONYMOUS":
+            if (
+                acl.principal.startswith("User:admin")
+                or acl.principal == "User:ANONYMOUS"
+            ):
                 continue
 
             live_fingerprint = (
@@ -99,7 +113,9 @@ def sync_acls(descriptor_path, bootstrap_servers):
             )
 
             if live_fingerprint not in desired_fingerprints:
-                print(f"PLAN: [DELETE] {acl.principal} -> {enum_name(acl.operation)} on {acl.name}")
+                print(
+                    f"PLAN: [DELETE] {acl.principal} -> {enum_name(acl.operation)} on {acl.name}"
+                )
 
                 delete_filter = AclBindingFilter(
                     restype=acl.restype,
@@ -108,7 +124,7 @@ def sync_acls(descriptor_path, bootstrap_servers):
                     principal=acl.principal,
                     host=acl.host,
                     operation=acl.operation,
-                    permission_type=acl.permission_type
+                    permission_type=acl.permission_type,
                 )
 
                 to_delete.append(delete_filter)
@@ -119,7 +135,9 @@ def sync_acls(descriptor_path, bootstrap_servers):
             for delete_filter, f in fs_delete.items():
                 try:
                     deleted_bindings = f.result()
-                    print(f"SUCCESS: Removed {len(deleted_bindings)} stale ACL bindings.")
+                    print(
+                        f"SUCCESS: Removed {len(deleted_bindings)} stale ACL bindings."
+                    )
                 except KafkaException as e:
                     print(f"ERROR during cleanup: {e}")
         else:

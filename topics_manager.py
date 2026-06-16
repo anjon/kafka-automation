@@ -1,35 +1,39 @@
 """
-This script synchronizes Kafka topics based on a YAML descriptor file. 
+This script synchronizes Kafka topics based on a YAML descriptor file.
 It performs the following steps:
 1. Loads the desired state of Kafka topics from a YAML file.
 2. Connects to the Kafka cluster and retrieves the current state of topics.
 3. Compares the desired state with the live state and identifies topics to create or delete.
 4. Executes the necessary create and delete operations using the Kafka Admin API."""
+
 import argparse
 import yaml
 from confluent_kafka.admin import AdminClient, NewTopic, KafkaException
 
+
 def sync_kafka_topics(descriptor_path, bootstrap_servers):
-    """ 1. Load the Desired State from YAML"""
-    with open(descriptor_path, 'r', encoding='utf-8') as file:
+    """1. Load the Desired State from YAML"""
+    with open(descriptor_path, "r", encoding="utf-8") as file:
         data = yaml.safe_load(file)
 
     # Extract all topic names defined in the YAML
     desired_topics = set()
     topic_configs = {}
-    for project in data.get('projects', []):
-        for topic_cfg in project.get('topics', []):
-            name = topic_cfg['name']
+    for project in data.get("projects", []):
+        for topic_cfg in project.get("topics", []):
+            name = topic_cfg["name"]
             desired_topics.add(name)
             topic_configs[name] = topic_cfg
 
     # 2. Initialize Admin Client and get Live State
-    admin_client = AdminClient({'bootstrap.servers': bootstrap_servers})
+    admin_client = AdminClient({"bootstrap.servers": bootstrap_servers})
     metadata = admin_client.list_topics(timeout=10)
     # We filter out internal Kafka topics like __consumer_offsets
-    live_topics = {t for t in metadata.topics.keys() if not t.startswith('__')}
+    live_topics = {t for t in metadata.topics.keys() if not t.startswith("__")}
 
-    print(f"Found {len(live_topics)} live topics and {len(desired_topics)} desired topics.")
+    print(
+        f"Found {len(live_topics)} live topics and {len(desired_topics)} desired topics."
+    )
 
     # --- PART A: CREATE MISSING TOPICS ---
     to_create = []
@@ -37,12 +41,14 @@ def sync_kafka_topics(descriptor_path, bootstrap_servers):
         if name not in live_topics:
             cfg = topic_configs[name]
             print(f"PLAN: [CREATE] topic '{name}'")
-            to_create.append(NewTopic(
-                topic=name,
-                num_partitions=cfg['partitions'],
-                replication_factor=cfg['replication'],
-                config=cfg.get('config', {})
-            ))
+            to_create.append(
+                NewTopic(
+                    topic=name,
+                    num_partitions=cfg["partitions"],
+                    replication_factor=cfg["replication"],
+                    config=cfg.get("config", {}),
+                )
+            )
 
     if to_create:
         fs_create = admin_client.create_topics(to_create)
@@ -68,9 +74,12 @@ def sync_kafka_topics(descriptor_path, bootstrap_servers):
     else:
         print("INFO: No topics to delete.")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Kafka Topic Reconciler")
-    parser.add_argument("--bootstrap", default="localhost:9092", help="Kafka bootstrap servers")
+    parser.add_argument(
+        "--bootstrap", default="localhost:9092", help="Kafka bootstrap servers"
+    )
     parser.add_argument("--file", default="topology.yml", help="Path to topology file")
     args = parser.parse_args()
 
